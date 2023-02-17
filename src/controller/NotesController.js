@@ -1,45 +1,57 @@
 const knex = require("../database/knex");
 
 class NotesController {
-  async create(req, res) {
-    const { title, description, rating } = req.body;
-    const { user_id } = req.params;
+    async create(req, res) {
+        const { title, description, rating } = req.body;
+        const user_id = req.user.id;
 
-    await knex("notes").insert({
-      title,
-      description,
-      rating,
-      user_id,
-    });
+        await knex("notes").insert({
+            title,
+            description,
+            rating,
+            user_id,
+        });
 
-    return res.json();
-  }
+        return res.json();
+    }
 
-  async show(req, res) {
-    const { id } = req.params;
+    async show(req, res) {
+        const { id } = req.params;
 
-    const note = await knex("notes").where({ id }).first();
+        const note = await knex("notes").where({ id }).first();
 
-    return res.json(note);
-  }
+        const tags = await knex('tags').where({ note_id: id }).orderBy('name');
 
-  async delete(req, res) {
-    const { id } = req.params;
+        return res.json({
+            ...note,
+            tags
+        });
+    }
 
-    await knex("notes").where({ id }).delete();
+    async delete(req, res) {
+        const { id } = req.params;
 
-    return res.json();
-  }
+        await knex("notes").where({ id }).delete();
 
-  async index(req, res) {
-    const { user_id, title } = req.query;
-    const notes = await knex("notes")
-      .where({ user_id })
-      .whereLike("title", `%${title}%`)
-      .orderBy("title");
+        return res.json();
+    }
 
-    return res.json(notes);
-  }
+    async index(req, res) {
+        const { note_id, title } = req.query;
+        const user_id = req.user.id;
+        
+        const notes = await knex("notes")
+            .where({ user_id })
+            .whereLike("title", `%${title}%`)
+            .orderBy("title");
+
+        const tags = await knex("tags").where({ note_id });
+
+        return res.json({
+            ...notes,
+            tags,
+        });
+    }
 }
 
 module.exports = NotesController;
