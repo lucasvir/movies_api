@@ -1,57 +1,65 @@
-const knex = require("../database/knex");
+const knex = require('../database/knex');
 
 class NotesController {
-    async create(req, res) {
-        const { title, description, rating } = req.body;
-        const user_id = req.user.id;
+  async create(req, res) {
+    const { title, description, rating, tags } = req.body;
+    const user_id = req.user.id;
 
-        await knex("notes").insert({
-            title,
-            description,
-            rating,
-            user_id,
-        });
+    const [note_id] = await knex('notes').insert({
+      title,
+      description,
+      rating,
+      user_id,
+    });
 
-        return res.json();
-    }
+    const tagsInsert = tags.map(name => {
+      return {
+        note_id,
+        user_id,
+        name,
+      };
+    });
 
-    async show(req, res) {
-        const { id } = req.params;
+    await knex('tags').insert(tagsInsert);
 
-        const note = await knex("notes").where({ id }).first();
+    return res.json();
+  }
 
-        const tags = await knex('tags').where({ note_id: id }).orderBy('name');
+  async show(req, res) {
+    const { id } = req.params;
 
-        return res.json({
-            ...note,
-            tags
-        });
-    }
+    const note = await knex('notes').where({ id }).first();
 
-    async delete(req, res) {
-        const { id } = req.params;
+    const tags = await knex('tags')
+      .where({ note_id: id })
+      .orderBy('name');
 
-        await knex("notes").where({ id }).delete();
+    return res.json({
+      ...note,
+      tags,
+    });
+  }
 
-        return res.json();
-    }
+  async delete(req, res) {
+    const { id } = req.params;
 
-    async index(req, res) {
-        const { note_id, title } = req.query;
-        const user_id = req.user.id;
-        
-        const notes = await knex("notes")
-            .where({ user_id })
-            .whereLike("title", `%${title}%`)
-            .orderBy("title");
+    await knex('notes').where({ id }).delete();
 
-        const tags = await knex("tags").where({ note_id });
+    return res.json();
+  }
 
-        return res.json({
-            ...notes,
-            tags,
-        });
-    }
+  async index(req, res) {
+    const { title } = req.query;
+
+    const user_id = req.user.id;
+
+    const notes = await knex('notes')
+      .where({ user_id })
+      .whereLike('title', `%${title}%`)
+      .orderBy('title');
+
+    return res.json(notes);
+  }
 }
 
 module.exports = NotesController;
